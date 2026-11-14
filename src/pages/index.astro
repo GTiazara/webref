@@ -1,84 +1,260 @@
 ---
 import { getCollection } from 'astro:content';
-import { ArrowDown, ArrowRight, ArrowUpRight, Blocks, Check, Compass, ExternalLink, Globe, Search, Sparkles } from '@lucide/astro';
+import {
+  ArrowDown,
+  ArrowRight,
+  ArrowUpRight,
+  Bot,
+  Compass,
+  ExternalLink,
+  Folder,
+  Globe,
+  NotebookPen,
+  Search,
+  Sparkles,
+  Star,
+  Vote,
+  X
+} from '@lucide/astro';
 import '../styles/global.css';
 
 const resources = (await getCollection('resources')).sort((a, b) => a.data.title.localeCompare(b.data.title, 'fr'));
 const categories = [...new Set(resources.map(({ data }) => data.category))].sort((a, b) => a.localeCompare(b, 'fr'));
+const featuredCount = resources.filter(({ data }) => data.featured).length;
 const categoryColors = ['peach', 'blue', 'green', 'yellow', 'lilac', 'pink', 'mint', 'orange'];
+
+const getCategoryIcon = (category: string) => {
+  const norm = category.toLowerCase();
+  if (norm.includes('ia') || norm.includes('intelligence')) return Bot;
+  if (norm.includes('note')) return NotebookPen;
+  if (norm.includes('présidentielle') || norm.includes('politique') || norm.includes('vote') || norm.includes('élection')) return Vote;
+  return Folder;
+};
 ---
 <!doctype html>
 <html lang="fr">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content="Une collection de sites et d'outils utiles, rangés par catégorie." />
+    <meta name="description" content="Une sélection d'applications et d'outils web indispensables, rangés par catégorie." />
     <meta name="theme-color" content="#f8f8f5" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <title>WebRéférences | Les bons liens, au bon endroit</title>
+    <title>WebRéférences | Les meilleurs outils & applications du web</title>
   </head>
   <body>
     <header class="header">
       <div class="shell header-inner">
         <a class="brand" href={import.meta.env.BASE_URL} aria-label="WebRéférences, accueil">
           <span class="brand-mark"><Compass size={22} stroke-width={2.2} /></span>
-          <span>web<span class="brand-accent">références</span><small>La petite collection du web</small></span>
+          <span>web<span class="brand-accent">références</span><small>Annuaire d'outils & applications</small></span>
         </a>
         <nav class="main-nav" aria-label="Navigation principale">
-          <a class="nav-active" href="#accueil">Accueil</a><a href="#categories">Catégories</a><a href="#ressources">La collection</a>
+          <a class="nav-active" href="#categories">Catégories</a>
+          <a href="#ressources">Applications</a>
+          {featuredCount > 0 && <a href="#ressources" data-filter-trigger="featured">⭐ Coups de cœur</a>}
         </nav>
-        <a class="header-link" href="#ressources">Explorer les liens <ArrowRight size={16} /></a>
+        <a class="header-link" href="#ressources">
+          Explorer ({resources.length}) <ArrowRight size={16} />
+        </a>
       </div>
     </header>
+
     <main id="accueil">
-      <section class="hero shell">
-        <div class="hero-copy">
-          <div class="eyebrow"><span></span> VOTRE COIN DU WEB</div>
-          <h1>Les bons liens,<br />au <em>bon endroit.</em></h1>
-          <p>Des sites et des outils utiles, soigneusement rangés pour les retrouver au moment où vous en avez besoin.</p>
-          <div class="hero-actions"><a class="button-primary" href="#ressources">Explorer la collection <ArrowDown size={17} /></a><span><span class="hero-count">{resources.length}</span> ressources à découvrir</span></div>
-        </div>
-      </section>
+      <!-- CATÉGORIES MISES EN VALEUR -->
       <section class="category-section" id="categories">
         <div class="shell category-inner">
-          <div class="category-heading"><span class="section-number">01 / EXPLORER</span><h2>Par où commencer ?</h2><p>Une catégorie, et c'est parti.</p></div>
-          <div class="category-list" aria-label="Catégories">{categories.map((category, index) => <button type="button" class="category-tile" data-category-shortcut={category}><span class:list={['category-icon', categoryColors[index % categoryColors.length]]}><Blocks size={20} /></span><span><strong>{category}</strong><small>{resources.filter(({ data }) => data.category === category).length} ressources</small></span><ArrowUpRight class="tile-arrow" size={17} /></button>)}</div>
+          <div class="category-heading">
+            <span class="section-tag">CATÉGORIES</span>
+            <h2>Explorer par univers</h2>
+            <p>Cliquez pour filtrer instantanément les outils.</p>
+          </div>
+          
+          <div class="category-list" aria-label="Catégories">
+            {categories.map((category, index) => {
+              const Icon = getCategoryIcon(category);
+              const color = categoryColors[index % categoryColors.length];
+              const count = resources.filter(({ data }) => data.category === category).length;
+              return (
+                <button
+                  type="button"
+                  class="category-tile"
+                  data-category-shortcut={category}
+                  aria-pressed="false"
+                >
+                  <span class:list={['category-icon', color]}>
+                    <Icon size={22} stroke-width={2} />
+                  </span>
+                  <div class="category-info">
+                    <strong>{category}</strong>
+                    <small>{count} {count > 1 ? 'applications' : 'application'}</small>
+                  </div>
+                  <ArrowUpRight class="tile-arrow" size={18} />
+                </button>
+              );
+            })}
+          </div>
         </div>
       </section>
+
+      <!-- APPLICATIONS & COLLECTION -->
       <section class="collection shell" id="ressources">
-        <div class="collection-heading"><div><span class="section-number">02 / LA COLLECTION</span><h2>Les bonnes adresses<span class="heading-dot">.</span></h2><p>À explorer, à utiliser, à garder sous le coude.</p></div><div class="collection-note"><Sparkles size={18} /> Une sélection pour vous simplifier le web</div></div>
-        <div class="toolbar">
-          <div class="filters" aria-label="Filtrer par catégorie"><button type="button" class="filter active" data-filter="all" aria-pressed="true">Tout voir <span>{resources.length}</span></button>{categories.map((category) => <button type="button" class="filter" data-filter={category} aria-pressed="false">{category}</button>)}</div>
-          <label class="search-box"><Search size={18} /><span class="sr-only">Rechercher une ressource</span><input id="resource-search" type="search" placeholder="Rechercher un site, un outil..." /></label>
+        <div class="collection-heading">
+          <div>
+            <span class="section-tag">APPLICATIONS</span>
+            <h2>Les applications & outils</h2>
+          </div>
+          <div class="collection-note">
+            <Sparkles size={16} /> {resources.length} ressources sélectionnées
+          </div>
         </div>
-        <div class="result-line"><p id="result-count" aria-live="polite">{resources.length} ressources</p><span>UNE COLLECTION QUI GRANDIT AVEC VOUS <ArrowRight size={14} /></span></div>
+
+        <!-- TOOLBAR DE FILTRES ET RECHERCHE -->
+        <div class="toolbar">
+          <div class="filters" aria-label="Filtrer par catégorie">
+            <button type="button" class="filter active" data-filter="all" aria-pressed="true">
+              Toutes <span>{resources.length}</span>
+            </button>
+            {featuredCount > 0 && (
+              <button type="button" class="filter filter-featured" data-filter="featured" aria-pressed="false">
+                ⭐ Coups de cœur <span>{featuredCount}</span>
+              </button>
+            )}
+            {categories.map((category) => {
+              const count = resources.filter(({ data }) => data.category === category).length;
+              return (
+                <button type="button" class="filter" data-filter={category} aria-pressed="false">
+                  {category} <span>{count}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          <label class="search-box">
+            <Search size={18} />
+            <span class="sr-only">Rechercher une application</span>
+            <input id="resource-search" type="search" placeholder="Rechercher une app, un tag, un outil..." />
+            <kbd class="search-kbd" title="Appuyez sur / pour rechercher">/</kbd>
+          </label>
+        </div>
+
+        <div class="result-line">
+          <p id="result-count" aria-live="polite">{resources.length} applications</p>
+          <button type="button" id="active-filter-badge" class="active-filter-badge" hidden>
+            <span id="active-filter-text"></span>
+            <X size={14} />
+          </button>
+        </div>
+
+        <!-- GRILLE D'APPLICATIONS -->
         <div class="resource-grid" id="resource-grid">
           {resources.map(({ data }) => {
             const domain = new URL(data.url).hostname.replace(/^www\./, '');
             const color = categoryColors[categories.indexOf(data.category) % categoryColors.length];
-            return <article class="resource-card" data-category={data.category} data-search={`${data.title} ${data.description} ${data.category} ${data.tags.join(' ')} ${domain}`}>
-              <div class="card-top"><span class:list={['resource-icon', color]}><img src={`https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=64`} alt="" loading="lazy" /><span>{data.title.charAt(0)}</span></span><a class="external-icon" href={data.url} target="_blank" rel="noopener noreferrer" aria-label={`Ouvrir ${data.title} dans un nouvel onglet`} title={`Ouvrir ${data.title}`}><ArrowUpRight size={19} /></a></div>
-              <div class="card-content"><span class="card-category">{data.category}</span><h3><a href={data.url} target="_blank" rel="noopener noreferrer">{data.title}</a></h3><p>{data.description}</p></div>
-              <div class="card-bottom"><span><Globe size={14} /> {domain}</span><span class="visit-link">Visiter <ExternalLink size={14} /></span></div>
-            </article>;
+            return (
+              <article
+                class:list={['resource-card', { 'is-featured': data.featured }]}
+                data-category={data.category}
+                data-featured={data.featured ? 'true' : 'false'}
+                data-search={`${data.title} ${data.description} ${data.category} ${data.tags.join(' ')} ${domain}`}
+              >
+                <div class="card-top">
+                  <div class="card-icon-wrapper">
+                    <span class:list={['resource-icon', color]}>
+                      <img
+                        src={`https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=64`}
+                        alt=""
+                        loading="lazy"
+                        onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.style.display='block';"
+                      />
+                      <span class="icon-fallback" style="display: none;">{data.title.charAt(0)}</span>
+                    </span>
+                  </div>
+
+                  <div class="card-badges">
+                    {data.featured && (
+                      <span class="featured-badge">
+                        <Star size={12} fill="currentColor" /> Coup de cœur
+                      </span>
+                    )}
+                    <span class:list={['card-category-pill', color]}>{data.category}</span>
+                  </div>
+                </div>
+
+                <div class="card-content">
+                  <h3>
+                    <a href={data.url} target="_blank" rel="noopener noreferrer" class="stretched-link">
+                      {data.title}
+                    </a>
+                  </h3>
+                  <p>{data.description}</p>
+                  
+                  {data.tags && data.tags.length > 0 && (
+                    <div class="card-tags">
+                      {data.tags.map((tag) => (
+                        <button type="button" class="tag-pill" data-tag-filter={tag}>
+                          #{tag}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div class="card-bottom">
+                  <span class="domain-info">
+                    <Globe size={13} /> {domain}
+                  </span>
+                  <a
+                    class="visit-button"
+                    href={data.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={`Ouvrir ${data.title}`}
+                  >
+                    <span>Lancer</span>
+                    <ArrowUpRight size={15} />
+                  </a>
+                </div>
+              </article>
+            );
           })}
         </div>
-        <div class="empty-state" id="empty-state" hidden><Search size={24} /><h3>Aucun résultat</h3><p>Essayez un autre mot-clé ou une autre catégorie.</p><button type="button" id="reset-filters">Effacer les filtres</button></div>
+
+        <div class="empty-state" id="empty-state" hidden>
+          <Search size={32} />
+          <h3>Aucune application trouvée</h3>
+          <p>Essayez un autre mot-clé ou effacez les filtres en cours.</p>
+          <button type="button" id="reset-filters" class="reset-button">Réinitialiser les filtres</button>
+        </div>
       </section>
-      <section class="closing shell"><div class="closing-icon"><Check size={23} /></div><div><span>MOINS DE RECHERCHES, PLUS DE TROUVAILLES</span><h2>Le web est vaste. Gardons le meilleur.</h2></div><a href="#accueil">Retour en haut <ArrowUpRight size={16} /></a></section>
     </main>
-    <footer><div class="shell footer-inner"><a class="footer-brand" href="#accueil"><span class="brand-mark"><Compass size={19} /></span> web<span>références</span></a><p>Une collection de liens utiles, tout simplement.</p><span>Fait pour les curieux <span class="footer-heart">♥</span></span></div></footer>
+
+    <footer>
+      <div class="shell footer-inner">
+        <a class="footer-brand" href="#accueil">
+          <span class="brand-mark"><Compass size={19} /></span>
+          web<span>références</span>
+        </a>
+        <p>Une collection claire pour accéder aux meilleures applications du web.</p>
+        <span>Fait pour les curieux <span class="footer-heart">♥</span></span>
+      </div>
+    </footer>
+
     <script>
       const filters = document.querySelectorAll<HTMLButtonElement>('[data-filter]');
       const shortcuts = document.querySelectorAll<HTMLButtonElement>('[data-category-shortcut]');
+      const navFeaturedTrigger = document.querySelector<HTMLAnchorElement>('[data-filter-trigger="featured"]');
       const cards = document.querySelectorAll<HTMLElement>('.resource-card');
       const search = document.querySelector<HTMLInputElement>('#resource-search');
       const count = document.querySelector<HTMLElement>('#result-count');
       const empty = document.querySelector<HTMLElement>('#empty-state');
       const reset = document.querySelector<HTMLButtonElement>('#reset-filters');
-      let selectedCategory = 'all';
+      const activeFilterBadge = document.querySelector<HTMLButtonElement>('#active-filter-badge');
+      const activeFilterText = document.querySelector<HTMLElement>('#active-filter-text');
+      const tagButtons = document.querySelectorAll<HTMLButtonElement>('[data-tag-filter]');
+
+      let selectedFilter = 'all';
 
       function normalize(value: string): string {
         return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
@@ -87,29 +263,131 @@ const categoryColors = ['peach', 'blue', 'green', 'yellow', 'lilac', 'pink', 'mi
       function updateResults(): void {
         const query = normalize(search?.value ?? '');
         let visible = 0;
+
         cards.forEach((card) => {
-          const matchesCategory = selectedCategory === 'all' || card.dataset.category === selectedCategory;
-          card.hidden = !matchesCategory || !normalize(card.dataset.search ?? '').includes(query);
-          if (!card.hidden) visible += 1;
+          let matchesFilter = false;
+          if (selectedFilter === 'all') {
+            matchesFilter = true;
+          } else if (selectedFilter === 'featured') {
+            matchesFilter = card.dataset.featured === 'true';
+          } else {
+            matchesFilter = card.dataset.category === selectedFilter;
+          }
+
+          const matchesSearch = !query || normalize(card.dataset.search ?? '').includes(query);
+          const shouldShow = matchesFilter && matchesSearch;
+
+          card.hidden = !shouldShow;
+          if (shouldShow) visible += 1;
         });
+
+        // Met à jour les boutons filtres
         filters.forEach((filter) => {
-          const active = filter.dataset.filter === selectedCategory;
+          const active = filter.dataset.filter === selectedFilter;
           filter.classList.toggle('active', active);
           filter.setAttribute('aria-pressed', String(active));
         });
-        if (count) count.textContent = `${visible} ressource${visible === 1 ? '' : 's'}`;
+
+        // Met à jour les tuiles catégories du haut
+        shortcuts.forEach((shortcut) => {
+          const active = shortcut.dataset.categoryShortcut === selectedFilter;
+          shortcut.classList.toggle('active', active);
+          shortcut.setAttribute('aria-pressed', String(active));
+        });
+
+        // Met à jour le badge de filtre actif
+        if (activeFilterBadge && activeFilterText) {
+          if (selectedFilter !== 'all' || query) {
+            activeFilterBadge.hidden = false;
+            let label = selectedFilter === 'featured' ? '⭐ Coups de cœur' : (selectedFilter !== 'all' ? selectedFilter : '');
+            if (query) {
+              label = label ? `${label} + "${search?.value}"` : `Recherche: "${search?.value}"`;
+            }
+            activeFilterText.textContent = label;
+          } else {
+            activeFilterBadge.hidden = true;
+          }
+        }
+
+        if (count) {
+          count.textContent = `${visible} application${visible > 1 ? 's' : ''}`;
+        }
         if (empty) empty.hidden = visible !== 0;
       }
 
-      filters.forEach((filter) => filter.addEventListener('click', () => { selectedCategory = filter.dataset.filter ?? 'all'; updateResults(); }));
-      shortcuts.forEach((shortcut) => shortcut.addEventListener('click', () => {
-        selectedCategory = shortcut.dataset.categoryShortcut ?? 'all';
+      function setFilter(filterVal: string): void {
+        selectedFilter = filterVal;
+        updateResults();
+      }
+
+      filters.forEach((filter) => {
+        filter.addEventListener('click', () => {
+          setFilter(filter.dataset.filter ?? 'all');
+        });
+      });
+
+      shortcuts.forEach((shortcut) => {
+        shortcut.addEventListener('click', () => {
+          const cat = shortcut.dataset.categoryShortcut ?? 'all';
+          // Si on reclique sur la catégorie déjà active, on réinitialise
+          if (selectedFilter === cat) {
+            setFilter('all');
+          } else {
+            setFilter(cat);
+          }
+          document.querySelector('#ressources')?.scrollIntoView({ behavior: 'smooth' });
+        });
+      });
+
+      navFeaturedTrigger?.addEventListener('click', (e) => {
+        e.preventDefault();
+        setFilter('featured');
+        document.querySelector('#ressources')?.scrollIntoView({ behavior: 'smooth' });
+      });
+
+      // Filtre rapide via clic sur les tags
+      tagButtons.forEach((btn) => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const tag = btn.dataset.tagFilter;
+          if (tag && search) {
+            search.value = tag;
+            updateResults();
+            document.querySelector('#ressources')?.scrollIntoView({ behavior: 'smooth' });
+          }
+        });
+      });
+
+      activeFilterBadge?.addEventListener('click', () => {
+        selectedFilter = 'all';
         if (search) search.value = '';
         updateResults();
-        document.querySelector('#ressources')?.scrollIntoView({ behavior: 'smooth' });
-      }));
+      });
+
       search?.addEventListener('input', updateResults);
-      reset?.addEventListener('click', () => { selectedCategory = 'all'; if (search) search.value = ''; updateResults(); search?.focus(); });
+
+      reset?.addEventListener('click', () => {
+        selectedFilter = 'all';
+        if (search) search.value = '';
+        updateResults();
+        search?.focus();
+      });
+
+      // Raccourci clavier / pour la recherche
+      window.addEventListener('keydown', (e) => {
+        if (e.key === '/' && document.activeElement !== search) {
+          e.preventDefault();
+          search?.focus();
+          search?.select();
+        } else if (e.key === 'Escape' && document.activeElement === search) {
+          if (search.value) {
+            search.value = '';
+            updateResults();
+          } else {
+            search.blur();
+          }
+        }
+      });
     </script>
   </body>
 </html>
