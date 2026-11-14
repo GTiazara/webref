@@ -39,4 +39,6 @@ Pour un déploiement dans un sous-dossier, définissez `SITE_BASE` (par exemple 
 
 Les fiches de `src/content/videos/` acceptent les liens YouTube `youtu.be`, `watch?v=`, `embed/` et `shorts/`. Le bouton « Lire sur le site » ouvre un lecteur YouTube dans une fenêtre intégrée ; le lecteur est chargé au clic et arrêté à la fermeture. Le lien externe reste disponible séparément.
 
+La fenêtre du lecteur adapte ses dimensions à la largeur et à la hauteur disponibles, en portrait comme en paysage. Sur mobile, son en-tête est compact et le bouton de fermeture reste accessible.
+
 Pour tester la lecture, utilisez l'adresse HTTP fournie par `npm run dev` ou `npm run preview` dans un navigateur compatible avec les codecs vidéo YouTube. L'ouverture directe du fichier HTML et certains navigateurs intégrés à VS Code peuvent empêcher la lecture.
