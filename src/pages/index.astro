@@ -1,26 +1,68 @@
 ---
 import { getCollection } from 'astro:content';
 import {
-  ArrowDown,
   ArrowRight,
   ArrowUpRight,
   Bot,
   Compass,
   ExternalLink,
+  Film,
   Folder,
   Globe,
   NotebookPen,
+  Play,
   Search,
   Sparkles,
   Star,
+  Tv,
   Vote,
   X
 } from '@lucide/astro';
 import '../styles/global.css';
 
 const resources = (await getCollection('resources')).sort((a, b) => a.data.title.localeCompare(b.data.title, 'fr'));
-const categories = [...new Set(resources.map(({ data }) => data.category))].sort((a, b) => a.localeCompare(b, 'fr'));
-const featuredCount = resources.filter(({ data }) => data.featured).length;
+const rawVideos = await getCollection('videos');
+
+// Extraction de l'ID YouTube (supporte watch?v=, youtu.be/, embed/, shorts/)
+function extractYouTubeId(urlStr: string, explicitId?: string): string {
+  if (explicitId && explicitId.trim()) return explicitId.trim();
+  try {
+    const parsed = new URL(urlStr);
+    if (parsed.hostname === 'youtu.be') {
+      return parsed.pathname.slice(1).split('/')[0];
+    }
+    if (parsed.hostname.includes('youtube.com')) {
+      if (parsed.searchParams.has('v')) {
+        return parsed.searchParams.get('v') || '';
+      }
+      const parts = parsed.pathname.split('/');
+      const embedIdx = parts.indexOf('embed');
+      if (embedIdx !== -1 && parts[embedIdx + 1]) {
+        return parts[embedIdx + 1];
+      }
+      const shortsIdx = parts.indexOf('shorts');
+      if (shortsIdx !== -1 && parts[shortsIdx + 1]) {
+        return parts[shortsIdx + 1];
+      }
+    }
+  } catch (_) {}
+  const match = urlStr.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=|shorts\/))([\w-]{11})/);
+  return match ? match[1] : '';
+}
+
+const videos = rawVideos
+  .map((v) => ({
+    ...v,
+    youtubeId: extractYouTubeId(v.data.url, v.data.youtubeId),
+  }))
+  .sort((a, b) => a.data.title.localeCompare(b.data.title, 'fr'));
+
+const appCategories = [...new Set(resources.map(({ data }) => data.category))].sort((a, b) => a.localeCompare(b, 'fr'));
+const videoCategories = [...new Set(videos.map(({ data }) => data.category))].sort((a, b) => a.localeCompare(b, 'fr'));
+
+const appFeaturedCount = resources.filter(({ data }) => data.featured).length;
+const videoFeaturedCount = videos.filter(({ data }) => data.featured).length;
+
 const categoryColors = ['peach', 'blue', 'green', 'yellow', 'lilac', 'pink', 'mint', 'orange'];
 
 const getCategoryIcon = (category: string) => {
@@ -36,199 +78,434 @@ const getCategoryIcon = (category: string) => {
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content="Une sélection d'applications et d'outils web indispensables, rangés par catégorie." />
+    <meta name="description" content="Une sélection d'applications et de vidéos web indispensables, rangées par catégorie." />
     <meta name="theme-color" content="#f8f8f5" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <title>WebRéférences | Les meilleurs outils & applications du web</title>
+    <title>WebRéférences | Applications & Vidéos du web</title>
   </head>
   <body>
     <header class="header">
       <div class="shell header-inner">
         <a class="brand" href={import.meta.env.BASE_URL} aria-label="WebRéférences, accueil">
           <span class="brand-mark"><Compass size={22} stroke-width={2.2} /></span>
-          <span>web<span class="brand-accent">références</span><small>Annuaire d'outils & applications</small></span>
+          <span>web<span class="brand-accent">références</span><small>Outils & Vidéos sélectionnés</small></span>
         </a>
+
+        <!-- COMMUTATEUR PRINCIPAL EN HEADER -->
         <nav class="main-nav" aria-label="Navigation principale">
-          <a class="nav-active" href="#categories">Catégories</a>
-          <a href="#ressources">Applications</a>
-          {featuredCount > 0 && <a href="#ressources" data-filter-trigger="featured">⭐ Coups de cœur</a>}
+          <button type="button" class="nav-tab active" data-nav-view="apps">
+            <Compass size={16} /> Applications ({resources.length})
+          </button>
+          <button type="button" class="nav-tab" data-nav-view="videos">
+            <Film size={16} /> Vidéos ({videos.length})
+          </button>
         </nav>
-        <a class="header-link" href="#ressources">
-          Explorer ({resources.length}) <ArrowRight size={16} />
+
+        <a class="header-link" href="#ressources" id="header-cta-link">
+          Explorer <ArrowRight size={16} />
         </a>
       </div>
     </header>
 
+    <!-- BARRE D'ONGLETS MOBILE & TABLETTE -->
+    <div class="view-switch-banner shell">
+      <div class="view-switch-control" role="tablist" aria-label="Format des contenus">
+        <button type="button" class="view-btn active" data-view-btn="apps" role="tab" aria-selected="true">
+          <Compass size={17} />
+          <span>Applications <strong>({resources.length})</strong></span>
+        </button>
+        <button type="button" class="view-btn" data-view-btn="videos" role="tab" aria-selected="false">
+          <Film size={17} />
+          <span>Vidéos <strong>({videos.length})</strong></span>
+        </button>
+      </div>
+    </div>
+
     <main id="accueil">
-      <!-- CATÉGORIES MISES EN VALEUR -->
-      <section class="category-section" id="categories">
-        <div class="shell category-inner">
-          <div class="category-heading">
-            <span class="section-tag">CATÉGORIES</span>
-            <h2>Explorer par univers</h2>
-            <p>Cliquez pour filtrer instantanément les outils.</p>
-          </div>
-          
-          <div class="category-list" aria-label="Catégories">
-            {categories.map((category, index) => {
-              const Icon = getCategoryIcon(category);
-              const color = categoryColors[index % categoryColors.length];
-              const count = resources.filter(({ data }) => data.category === category).length;
-              return (
-                <button
-                  type="button"
-                  class="category-tile"
-                  data-category-shortcut={category}
-                  aria-pressed="false"
-                >
-                  <span class:list={['category-icon', color]}>
-                    <Icon size={22} stroke-width={2} />
-                  </span>
-                  <div class="category-info">
-                    <strong>{category}</strong>
-                    <small>{count} {count > 1 ? 'applications' : 'application'}</small>
-                  </div>
-                  <ArrowUpRight class="tile-arrow" size={18} />
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      </section>
+      <!-- ===================================================================
+           VUE 1 : APPLICATIONS
+           =================================================================== -->
+      <section id="view-apps" class="content-view active" aria-labelledby="view-apps-title">
+        <h1 id="view-apps-title" class="sr-only">Applications et Outils Web</h1>
 
-      <!-- APPLICATIONS & COLLECTION -->
-      <section class="collection shell" id="ressources">
-        <div class="collection-heading">
-          <div>
-            <span class="section-tag">APPLICATIONS</span>
-            <h2>Les applications & outils</h2>
+        <!-- CATÉGORIES D'APPLICATIONS -->
+        <section class="category-section" id="categories-apps">
+          <div class="shell category-inner">
+            <div class="category-heading">
+              <span class="section-tag">CATÉGORIES D'APPLICATIONS</span>
+              <h2>Explorer par univers</h2>
+              <p>Cliquez pour filtrer instantanément les outils.</p>
+            </div>
+            
+            <div class="category-list" aria-label="Catégories d'applications">
+              {appCategories.map((category, index) => {
+                const Icon = getCategoryIcon(category);
+                const color = categoryColors[index % categoryColors.length];
+                const count = resources.filter(({ data }) => data.category === category).length;
+                return (
+                  <button
+                    type="button"
+                    class="category-tile"
+                    data-app-category-shortcut={category}
+                    aria-pressed="false"
+                  >
+                    <span class:list={['category-icon', color]}>
+                      <Icon size={22} stroke-width={2} />
+                    </span>
+                    <div class="category-info">
+                      <strong>{category}</strong>
+                      <small>{count} {count > 1 ? 'applications' : 'application'}</small>
+                    </div>
+                    <ArrowUpRight class="tile-arrow" size={18} />
+                  </button>
+                );
+              })}
+            </div>
           </div>
-          <div class="collection-note">
-            <Sparkles size={16} /> {resources.length} ressources sélectionnées
-          </div>
-        </div>
-
-        <!-- TOOLBAR DE FILTRES ET RECHERCHE -->
-        <div class="toolbar">
-          <div class="filters" aria-label="Filtrer par catégorie">
-            <button type="button" class="filter active" data-filter="all" aria-pressed="true">
-              Toutes <span>{resources.length}</span>
-            </button>
-            {featuredCount > 0 && (
-              <button type="button" class="filter filter-featured" data-filter="featured" aria-pressed="false">
-                ⭐ Coups de cœur <span>{featuredCount}</span>
-              </button>
-            )}
-            {categories.map((category) => {
-              const count = resources.filter(({ data }) => data.category === category).length;
-              return (
-                <button type="button" class="filter" data-filter={category} aria-pressed="false">
-                  {category} <span>{count}</span>
-                </button>
-              );
-            })}
-          </div>
-
-          <label class="search-box">
-            <Search size={18} />
-            <span class="sr-only">Rechercher une application</span>
-            <input id="resource-search" type="search" placeholder="Rechercher une app, un tag, un outil..." />
-            <kbd class="search-kbd" title="Appuyez sur / pour rechercher">/</kbd>
-          </label>
-        </div>
-
-        <div class="result-line">
-          <p id="result-count" aria-live="polite">{resources.length} applications</p>
-          <button type="button" id="active-filter-badge" class="active-filter-badge" hidden>
-            <span id="active-filter-text"></span>
-            <X size={14} />
-          </button>
-        </div>
+        </section>
 
         <!-- GRILLE D'APPLICATIONS -->
-        <div class="resource-grid" id="resource-grid">
-          {resources.map(({ data }) => {
-            const domain = new URL(data.url).hostname.replace(/^www\./, '');
-            const color = categoryColors[categories.indexOf(data.category) % categoryColors.length];
-            return (
-              <article
-                class:list={['resource-card', { 'is-featured': data.featured }]}
-                data-category={data.category}
-                data-featured={data.featured ? 'true' : 'false'}
-                data-search={`${data.title} ${data.description} ${data.category} ${data.tags.join(' ')} ${domain}`}
-              >
-                <div class="card-top">
-                  <div class="card-icon-wrapper">
-                    <span class:list={['resource-icon', color]}>
-                      <img
-                        src={`https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=64`}
-                        alt=""
-                        loading="lazy"
-                        onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.style.display='block';"
-                      />
-                      <span class="icon-fallback" style="display: none;">{data.title.charAt(0)}</span>
-                    </span>
-                  </div>
+        <section class="collection shell" id="ressources">
+          <div class="collection-heading">
+            <div>
+              <span class="section-tag">ANNUAIRE D'APPLICATIONS</span>
+              <h2>Les outils indispensables</h2>
+            </div>
+            <div class="collection-note">
+              <Sparkles size={16} /> {resources.length} applications sélectionnées
+            </div>
+          </div>
 
-                  <div class="card-badges">
-                    {data.featured && (
-                      <span class="featured-badge">
-                        <Star size={12} fill="currentColor" /> Coup de cœur
+          <!-- TOOLBAR APPLICATIONS -->
+          <div class="toolbar">
+            <div class="filters" aria-label="Filtrer les applications par catégorie">
+              <button type="button" class="filter active" data-app-filter="all" aria-pressed="true">
+                Toutes <span>{resources.length}</span>
+              </button>
+              {appFeaturedCount > 0 && (
+                <button type="button" class="filter filter-featured" data-app-filter="featured" aria-pressed="false">
+                  ⭐ Coups de cœur <span>{appFeaturedCount}</span>
+                </button>
+              )}
+              {appCategories.map((category) => {
+                const count = resources.filter(({ data }) => data.category === category).length;
+                return (
+                  <button type="button" class="filter" data-app-filter={category} aria-pressed="false">
+                    {category} <span>{count}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <label class="search-box">
+              <Search size={18} />
+              <span class="sr-only">Rechercher une application</span>
+              <input id="app-search" type="search" placeholder="Rechercher une app, un tag, un outil..." />
+              <kbd class="search-kbd" title="Appuyez sur / pour rechercher">/</kbd>
+            </label>
+          </div>
+
+          <div class="result-line">
+            <p id="app-result-count" aria-live="polite">{resources.length} applications</p>
+            <button type="button" id="app-active-filter-badge" class="active-filter-badge" hidden>
+              <span id="app-active-filter-text"></span>
+              <X size={14} />
+            </button>
+          </div>
+
+          <!-- CARTES APPLICATIONS -->
+          <div class="resource-grid" id="app-grid">
+            {resources.map(({ data }) => {
+              const domain = new URL(data.url).hostname.replace(/^www\./, '');
+              const color = categoryColors[appCategories.indexOf(data.category) % categoryColors.length];
+              return (
+                <article
+                  class:list={['resource-card', { 'is-featured': data.featured }]}
+                  data-category={data.category}
+                  data-featured={data.featured ? 'true' : 'false'}
+                  data-search={`${data.title} ${data.description} ${data.category} ${data.tags.join(' ')} ${domain}`}
+                >
+                  <div class="card-top">
+                    <div class="card-icon-wrapper">
+                      <span class:list={['resource-icon', color]}>
+                        <img
+                          src={`https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=64`}
+                          alt=""
+                          loading="lazy"
+                          onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.style.display='block';"
+                        />
+                        <span class="icon-fallback" style="display: none;">{data.title.charAt(0)}</span>
                       </span>
-                    )}
-                    <span class:list={['card-category-pill', color]}>{data.category}</span>
-                  </div>
-                </div>
-
-                <div class="card-content">
-                  <h3>
-                    <a href={data.url} target="_blank" rel="noopener noreferrer" class="stretched-link">
-                      {data.title}
-                    </a>
-                  </h3>
-                  <p>{data.description}</p>
-                  
-                  {data.tags && data.tags.length > 0 && (
-                    <div class="card-tags">
-                      {data.tags.map((tag) => (
-                        <button type="button" class="tag-pill" data-tag-filter={tag}>
-                          #{tag}
-                        </button>
-                      ))}
                     </div>
-                  )}
-                </div>
 
-                <div class="card-bottom">
-                  <span class="domain-info">
-                    <Globe size={13} /> {domain}
-                  </span>
-                  <a
-                    class="visit-button"
-                    href={data.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label={`Ouvrir ${data.title}`}
+                    <div class="card-badges">
+                      {data.featured && (
+                        <span class="featured-badge">
+                          <Star size={12} fill="currentColor" /> Coup de cœur
+                        </span>
+                      )}
+                      <span class:list={['card-category-pill', color]}>{data.category}</span>
+                    </div>
+                  </div>
+
+                  <div class="card-content">
+                    <h3>
+                      <a href={data.url} target="_blank" rel="noopener noreferrer" class="stretched-link">
+                        {data.title}
+                      </a>
+                    </h3>
+                    <p>{data.description}</p>
+                    
+                    {data.tags && data.tags.length > 0 && (
+                      <div class="card-tags">
+                        {data.tags.map((tag) => (
+                          <button type="button" class="tag-pill" data-app-tag-filter={tag}>
+                            #{tag}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div class="card-bottom">
+                    <span class="domain-info">
+                      <Globe size={13} /> {domain}
+                    </span>
+                    <a
+                      class="visit-button"
+                      href={data.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label={`Ouvrir ${data.title}`}
+                    >
+                      <span>Lancer</span>
+                      <ArrowUpRight size={15} />
+                    </a>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+
+          <div class="empty-state" id="app-empty-state" hidden>
+            <Search size={32} />
+            <h3>Aucune application trouvée</h3>
+            <p>Essayez un autre mot-clé ou effacez les filtres en cours.</p>
+            <button type="button" id="reset-app-filters" class="reset-button">Réinitialiser les filtres</button>
+          </div>
+        </section>
+      </section>
+
+      <!-- ===================================================================
+           VUE 2 : VIDÉOS YOUTUBE
+           =================================================================== -->
+      <section id="view-videos" class="content-view" hidden aria-labelledby="view-videos-title">
+        <h1 id="view-videos-title" class="sr-only">Vidéos et Tutoriels Web</h1>
+
+        <!-- EN-TÊTE / CATÉGORIES VIDÉOS -->
+        <section class="category-section" id="categories-videos">
+          <div class="shell category-inner">
+            <div class="category-heading">
+              <span class="section-tag section-tag-video">VIDÉOS YOUTUBE</span>
+              <h2>Tutoriels & Découvertes</h2>
+              <p>Explorez les meilleures vidéos, guides et démonstrations.</p>
+            </div>
+            
+            <div class="category-list" aria-label="Catégories de vidéos">
+              {videoCategories.map((category, index) => {
+                const Icon = getCategoryIcon(category);
+                const color = categoryColors[index % categoryColors.length];
+                const count = videos.filter(({ data }) => data.category === category).length;
+                return (
+                  <button
+                    type="button"
+                    class="category-tile"
+                    data-video-category-shortcut={category}
+                    aria-pressed="false"
                   >
-                    <span>Lancer</span>
-                    <ArrowUpRight size={15} />
-                  </a>
-                </div>
-              </article>
-            );
-          })}
-        </div>
+                    <span class:list={['category-icon', color]}>
+                      <Icon size={22} stroke-width={2} />
+                    </span>
+                    <div class="category-info">
+                      <strong>{category}</strong>
+                      <small>{count} {count > 1 ? 'vidéos' : 'vidéo'}</small>
+                    </div>
+                    <Play class="tile-arrow" size={17} fill="currentColor" />
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </section>
 
-        <div class="empty-state" id="empty-state" hidden>
-          <Search size={32} />
-          <h3>Aucune application trouvée</h3>
-          <p>Essayez un autre mot-clé ou effacez les filtres en cours.</p>
-          <button type="button" id="reset-filters" class="reset-button">Réinitialiser les filtres</button>
-        </div>
+        <!-- GRILLE DE VIDÉOS -->
+        <section class="collection shell" id="videos-collection">
+          <div class="collection-heading">
+            <div>
+              <span class="section-tag section-tag-video">SÉLECTION VIDÉOS</span>
+              <h2>Les vidéos sélectionnées</h2>
+            </div>
+            <div class="collection-note collection-note-video">
+              <Tv size={16} /> {videos.length} vidéos disponibles
+            </div>
+          </div>
+
+          <!-- TOOLBAR VIDÉOS -->
+          <div class="toolbar">
+            <div class="filters" aria-label="Filtrer les vidéos par catégorie">
+              <button type="button" class="filter active" data-video-filter="all" aria-pressed="true">
+                Toutes <span>{videos.length}</span>
+              </button>
+              {videoFeaturedCount > 0 && (
+                <button type="button" class="filter filter-featured" data-video-filter="featured" aria-pressed="false">
+                  ⭐ Coups de cœur <span>{videoFeaturedCount}</span>
+                </button>
+              )}
+              {videoCategories.map((category) => {
+                const count = videos.filter(({ data }) => data.category === category).length;
+                return (
+                  <button type="button" class="filter" data-video-filter={category} aria-pressed="false">
+                    {category} <span>{count}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <label class="search-box">
+              <Search size={18} />
+              <span class="sr-only">Rechercher une vidéo</span>
+              <input id="video-search" type="search" placeholder="Rechercher une vidéo, un sujet, une chaîne..." />
+            </label>
+          </div>
+
+          <div class="result-line">
+            <p id="video-result-count" aria-live="polite">{videos.length} vidéos</p>
+            <button type="button" id="video-active-filter-badge" class="active-filter-badge" hidden>
+              <span id="video-active-filter-text"></span>
+              <X size={14} />
+            </button>
+          </div>
+
+          <!-- CARTES VIDÉOS -->
+          <div class="video-grid" id="video-grid">
+            {videos.map(({ data, youtubeId }) => {
+              const color = categoryColors[videoCategories.indexOf(data.category) % categoryColors.length];
+              return (
+                <article
+                  class:list={['video-card', { 'is-featured': data.featured }]}
+                  data-category={data.category}
+                  data-featured={data.featured ? 'true' : 'false'}
+                  data-search={`${data.title} ${data.description} ${data.category} ${data.tags.join(' ')} ${data.channel ?? ''}`}
+                >
+                  <button
+                    type="button"
+                    class="video-thumbnail-box"
+                    data-play-video={youtubeId}
+                    data-video-title={data.title}
+                    aria-label={`Lire sur le site : ${data.title}`}
+                    aria-haspopup="dialog"
+                  >
+                    <img
+                      class="video-img"
+                      src={`https://i.ytimg.com/vi/${youtubeId}/hqdefault.jpg`}
+                      alt=""
+                      loading="lazy"
+                    />
+                    <span class="video-play-btn-overlay" aria-hidden="true">
+                      <span class="play-circle"><Play size={24} fill="currentColor" /></span>
+                      <span class="play-text">Lire sur le site</span>
+                    </span>
+                  </button>
+
+                  <div class="video-card-body">
+                    <div class="video-badges-row">
+                      <span class:list={['card-category-pill', color]}>{data.category}</span>
+                      {data.channel && <span class="video-channel-pill">{data.channel}</span>}
+                      {data.duration && <span class="video-duration-pill">{data.duration}</span>}
+                      {data.featured && (
+                        <span class="featured-badge video-corner-badge">
+                          <Star size={11} fill="currentColor" /> Coup de cœur
+                        </span>
+                      )}
+                    </div>
+
+                    <h3 class="video-card-title">
+                      <button
+                        type="button"
+                        class="video-title-action"
+                        data-play-video={youtubeId}
+                        data-video-title={data.title}
+                        aria-haspopup="dialog"
+                      >
+                        {data.title}
+                      </button>
+                    </h3>
+
+                    <p class="video-card-desc">{data.description}</p>
+
+                    {data.tags && data.tags.length > 0 && (
+                      <div class="card-tags">
+                        {data.tags.map((tag) => (
+                          <button type="button" class="tag-pill" data-video-tag-filter={tag}>
+                            #{tag}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div class="video-card-bottom">
+                    <button
+                      type="button"
+                      class="watch-video-btn"
+                      data-play-video={youtubeId}
+                      data-video-title={data.title}
+                      aria-haspopup="dialog"
+                    >
+                      <Play size={14} />
+                      <span>Lire sur le site</span>
+                    </button>
+                    <a
+                      href={data.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="yt-direct-link"
+                      title="Ouvrir sur YouTube dans un nouvel onglet"
+                    >
+                      <ExternalLink size={14} />
+                      <span class="sr-only">Ouvrir sur YouTube</span>
+                    </a>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+
+          <div class="empty-state" id="video-empty-state" hidden>
+            <Search size={32} />
+            <h3>Aucune vidéo trouvée</h3>
+            <p>Essayez un autre mot-clé ou effacez les filtres vidéo.</p>
+            <button type="button" id="reset-video-filters" class="reset-button">Réinitialiser les filtres</button>
+          </div>
+        </section>
       </section>
     </main>
+
+    <dialog id="video-player" class="video-player-dialog" aria-labelledby="video-player-title">
+      <div class="video-modal-card">
+        <div class="video-modal-header">
+          <div class="video-modal-titles">
+            <h3 id="video-player-title"></h3>
+          </div>
+          <button type="button" id="close-video-player" class="modal-close-button" aria-label="Fermer le lecteur">
+            <X size={20} />
+          </button>
+        </div>
+        <div id="video-player-box" class="video-modal-player-box"></div>
+      </div>
+    </dialog>
 
     <footer>
       <div class="shell footer-inner">
@@ -236,42 +513,139 @@ const getCategoryIcon = (category: string) => {
           <span class="brand-mark"><Compass size={19} /></span>
           web<span>références</span>
         </a>
-        <p>Une collection claire pour accéder aux meilleures applications du web.</p>
+        <p>Une collection claire d'applications et de vidéos sélectionnées du web.</p>
         <span>Fait pour les curieux <span class="footer-heart">♥</span></span>
       </div>
     </footer>
 
     <script>
-      const filters = document.querySelectorAll<HTMLButtonElement>('[data-filter]');
-      const shortcuts = document.querySelectorAll<HTMLButtonElement>('[data-category-shortcut]');
-      const navFeaturedTrigger = document.querySelector<HTMLAnchorElement>('[data-filter-trigger="featured"]');
-      const cards = document.querySelectorAll<HTMLElement>('.resource-card');
-      const search = document.querySelector<HTMLInputElement>('#resource-search');
-      const count = document.querySelector<HTMLElement>('#result-count');
-      const empty = document.querySelector<HTMLElement>('#empty-state');
-      const reset = document.querySelector<HTMLButtonElement>('#reset-filters');
-      const activeFilterBadge = document.querySelector<HTMLButtonElement>('#active-filter-badge');
-      const activeFilterText = document.querySelector<HTMLElement>('#active-filter-text');
-      const tagButtons = document.querySelectorAll<HTMLButtonElement>('[data-tag-filter]');
+      const videoPlayer = document.querySelector<HTMLDialogElement>('#video-player');
+      const videoPlayerBox = document.querySelector<HTMLElement>('#video-player-box');
+      const videoPlayerTitle = document.querySelector<HTMLElement>('#video-player-title');
 
-      let selectedFilter = 'all';
+      if (videoPlayer && videoPlayerBox && videoPlayerTitle) {
+        document.querySelectorAll<HTMLButtonElement>('[data-play-video]').forEach((button) => {
+          button.addEventListener('click', () => {
+            const youtubeId = button.dataset.playVideo;
+            if (!youtubeId || !/^[\w-]{11}$/.test(youtubeId)) {
+              console.error('Identifiant YouTube invalide', youtubeId);
+              videoPlayerTitle.textContent = 'Impossible de charger cette vidéo.';
+              videoPlayerBox.replaceChildren();
+              videoPlayer.showModal();
+              return;
+            }
+
+            const title = button.dataset.videoTitle ?? 'Lecteur vidéo YouTube';
+            const iframe = document.createElement('iframe');
+            const embedUrl = new URL(`https://www.youtube.com/embed/${youtubeId}`);
+            embedUrl.searchParams.set('autoplay', '1');
+            embedUrl.searchParams.set('playsinline', '1');
+            embedUrl.searchParams.set('origin', window.location.origin);
+            iframe.src = embedUrl.href;
+            iframe.width = '560';
+            iframe.height = '315';
+            iframe.title = title;
+            iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';
+            iframe.referrerPolicy = 'strict-origin-when-cross-origin';
+            iframe.allowFullscreen = true;
+            videoPlayerTitle.textContent = title;
+            videoPlayerBox.replaceChildren(iframe);
+            videoPlayer.showModal();
+          });
+        });
+
+        document.querySelector('#close-video-player')?.addEventListener('click', () => videoPlayer.close());
+        videoPlayer.addEventListener('click', (event) => {
+          if (event.target === videoPlayer) videoPlayer.close();
+        });
+        videoPlayer.addEventListener('close', () => videoPlayerBox.replaceChildren());
+      }
+
+      // =======================================================================
+      // 1. GESTION DES ONGLETS (APPLICATIONS vs VIDÉOS)
+      // =======================================================================
+      const navTabs = document.querySelectorAll<HTMLButtonElement>('[data-nav-view]');
+      const viewBtns = document.querySelectorAll<HTMLButtonElement>('[data-view-btn]');
+      const viewApps = document.getElementById('view-apps');
+      const viewVideos = document.getElementById('view-videos');
+
+      let currentView = 'apps';
+
+      function setView(view: string, updateHash = true): void {
+        currentView = view === 'videos' ? 'videos' : 'apps';
+
+        navTabs.forEach((tab) => {
+          const isActive = tab.dataset.navView === currentView;
+          tab.classList.toggle('active', isActive);
+        });
+
+        viewBtns.forEach((btn) => {
+          const isActive = btn.dataset.viewBtn === currentView;
+          btn.classList.toggle('active', isActive);
+          btn.setAttribute('aria-selected', String(isActive));
+        });
+
+        if (viewApps && viewVideos) {
+          if (currentView === 'videos') {
+            viewApps.hidden = true;
+            viewApps.classList.remove('active');
+            viewVideos.hidden = false;
+            viewVideos.classList.add('active');
+          } else {
+            viewVideos.hidden = true;
+            viewVideos.classList.remove('active');
+            viewApps.hidden = false;
+            viewApps.classList.add('active');
+          }
+        }
+
+        if (updateHash) {
+          try {
+            history.replaceState(null, '', currentView === 'videos' ? '#videos' : '#apps');
+          } catch (_) {}
+        }
+      }
+
+      navTabs.forEach((tab) => tab.addEventListener('click', () => setView(tab.dataset.navView ?? 'apps')));
+      viewBtns.forEach((btn) => btn.addEventListener('click', () => setView(btn.dataset.viewBtn ?? 'apps')));
+
+      // Vérifie l'ancre d'URL au chargement (#videos ou #apps)
+      if (window.location.hash === '#videos') {
+        setView('videos', false);
+      }
+
+      // =======================================================================
+      // 2. GESTION DES APPLICATIONS (FILTRES & RECHERCHE)
+      // =======================================================================
+      const appFilters = document.querySelectorAll<HTMLButtonElement>('[data-app-filter]');
+      const appShortcuts = document.querySelectorAll<HTMLButtonElement>('[data-app-category-shortcut]');
+      const appCards = document.querySelectorAll<HTMLElement>('#app-grid .resource-card');
+      const appSearch = document.querySelector<HTMLInputElement>('#app-search');
+      const appCount = document.querySelector<HTMLElement>('#app-result-count');
+      const appEmpty = document.querySelector<HTMLElement>('#app-empty-state');
+      const appReset = document.querySelector<HTMLButtonElement>('#reset-app-filters');
+      const appActiveBadge = document.querySelector<HTMLButtonElement>('#app-active-filter-badge');
+      const appActiveText = document.querySelector<HTMLElement>('#app-active-filter-text');
+      const appTagButtons = document.querySelectorAll<HTMLButtonElement>('[data-app-tag-filter]');
+
+      let selectedAppFilter = 'all';
 
       function normalize(value: string): string {
         return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
       }
 
-      function updateResults(): void {
-        const query = normalize(search?.value ?? '');
+      function updateAppResults(): void {
+        const query = normalize(appSearch?.value ?? '');
         let visible = 0;
 
-        cards.forEach((card) => {
+        appCards.forEach((card) => {
           let matchesFilter = false;
-          if (selectedFilter === 'all') {
+          if (selectedAppFilter === 'all') {
             matchesFilter = true;
-          } else if (selectedFilter === 'featured') {
+          } else if (selectedAppFilter === 'featured') {
             matchesFilter = card.dataset.featured === 'true';
           } else {
-            matchesFilter = card.dataset.category === selectedFilter;
+            matchesFilter = card.dataset.category === selectedAppFilter;
           }
 
           const matchesSearch = !query || normalize(card.dataset.search ?? '').includes(query);
@@ -281,110 +655,224 @@ const getCategoryIcon = (category: string) => {
           if (shouldShow) visible += 1;
         });
 
-        // Met à jour les boutons filtres
-        filters.forEach((filter) => {
-          const active = filter.dataset.filter === selectedFilter;
+        appFilters.forEach((filter) => {
+          const active = filter.dataset.appFilter === selectedAppFilter;
           filter.classList.toggle('active', active);
           filter.setAttribute('aria-pressed', String(active));
         });
 
-        // Met à jour les tuiles catégories du haut
-        shortcuts.forEach((shortcut) => {
-          const active = shortcut.dataset.categoryShortcut === selectedFilter;
+        appShortcuts.forEach((shortcut) => {
+          const active = shortcut.dataset.appCategoryShortcut === selectedAppFilter;
           shortcut.classList.toggle('active', active);
           shortcut.setAttribute('aria-pressed', String(active));
         });
 
-        // Met à jour le badge de filtre actif
-        if (activeFilterBadge && activeFilterText) {
-          if (selectedFilter !== 'all' || query) {
-            activeFilterBadge.hidden = false;
-            let label = selectedFilter === 'featured' ? '⭐ Coups de cœur' : (selectedFilter !== 'all' ? selectedFilter : '');
+        if (appActiveBadge && appActiveText) {
+          if (selectedAppFilter !== 'all' || query) {
+            appActiveBadge.hidden = false;
+            let label = selectedAppFilter === 'featured' ? '⭐ Coups de cœur' : (selectedAppFilter !== 'all' ? selectedAppFilter : '');
             if (query) {
-              label = label ? `${label} + "${search?.value}"` : `Recherche: "${search?.value}"`;
+              label = label ? `${label} + "${appSearch?.value}"` : `Recherche: "${appSearch?.value}"`;
             }
-            activeFilterText.textContent = label;
+            appActiveText.textContent = label;
           } else {
-            activeFilterBadge.hidden = true;
+            appActiveBadge.hidden = true;
           }
         }
 
-        if (count) {
-          count.textContent = `${visible} application${visible > 1 ? 's' : ''}`;
+        if (appCount) {
+          appCount.textContent = `${visible} application${visible > 1 ? 's' : ''}`;
         }
-        if (empty) empty.hidden = visible !== 0;
+        if (appEmpty) appEmpty.hidden = visible !== 0;
       }
 
-      function setFilter(filterVal: string): void {
-        selectedFilter = filterVal;
-        updateResults();
+      function setAppFilter(filterVal: string): void {
+        selectedAppFilter = filterVal;
+        updateAppResults();
       }
 
-      filters.forEach((filter) => {
-        filter.addEventListener('click', () => {
-          setFilter(filter.dataset.filter ?? 'all');
-        });
+      appFilters.forEach((filter) => {
+        filter.addEventListener('click', () => setAppFilter(filter.dataset.appFilter ?? 'all'));
       });
 
-      shortcuts.forEach((shortcut) => {
+      appShortcuts.forEach((shortcut) => {
         shortcut.addEventListener('click', () => {
-          const cat = shortcut.dataset.categoryShortcut ?? 'all';
-          // Si on reclique sur la catégorie déjà active, on réinitialise
-          if (selectedFilter === cat) {
-            setFilter('all');
-          } else {
-            setFilter(cat);
-          }
+          const cat = shortcut.dataset.appCategoryShortcut ?? 'all';
+          setAppFilter(selectedAppFilter === cat ? 'all' : cat);
           document.querySelector('#ressources')?.scrollIntoView({ behavior: 'smooth' });
         });
       });
 
-      navFeaturedTrigger?.addEventListener('click', (e) => {
-        e.preventDefault();
-        setFilter('featured');
-        document.querySelector('#ressources')?.scrollIntoView({ behavior: 'smooth' });
-      });
-
-      // Filtre rapide via clic sur les tags
-      tagButtons.forEach((btn) => {
+      appTagButtons.forEach((btn) => {
         btn.addEventListener('click', (e) => {
           e.stopPropagation();
-          const tag = btn.dataset.tagFilter;
-          if (tag && search) {
-            search.value = tag;
-            updateResults();
+          const tag = btn.dataset.appTagFilter;
+          if (tag && appSearch) {
+            appSearch.value = tag;
+            updateAppResults();
             document.querySelector('#ressources')?.scrollIntoView({ behavior: 'smooth' });
           }
         });
       });
 
-      activeFilterBadge?.addEventListener('click', () => {
-        selectedFilter = 'all';
-        if (search) search.value = '';
-        updateResults();
+      appActiveBadge?.addEventListener('click', () => {
+        selectedAppFilter = 'all';
+        if (appSearch) appSearch.value = '';
+        updateAppResults();
       });
 
-      search?.addEventListener('input', updateResults);
+      appSearch?.addEventListener('input', updateAppResults);
 
-      reset?.addEventListener('click', () => {
-        selectedFilter = 'all';
-        if (search) search.value = '';
-        updateResults();
-        search?.focus();
+      appReset?.addEventListener('click', () => {
+        selectedAppFilter = 'all';
+        if (appSearch) appSearch.value = '';
+        updateAppResults();
+        appSearch?.focus();
       });
 
-      // Raccourci clavier / pour la recherche
-      window.addEventListener('keydown', (e) => {
-        if (e.key === '/' && document.activeElement !== search) {
-          e.preventDefault();
-          search?.focus();
-          search?.select();
-        } else if (e.key === 'Escape' && document.activeElement === search) {
-          if (search.value) {
-            search.value = '';
-            updateResults();
+      // =======================================================================
+      // 3. GESTION DES VIDÉOS (FILTRES & RECHERCHE)
+      // =======================================================================
+      const videoFilters = document.querySelectorAll<HTMLButtonElement>('[data-video-filter]');
+      const videoShortcuts = document.querySelectorAll<HTMLButtonElement>('[data-video-category-shortcut]');
+      const videoCards = document.querySelectorAll<HTMLElement>('#video-grid .video-card');
+      const videoSearch = document.querySelector<HTMLInputElement>('#video-search');
+      const videoCount = document.querySelector<HTMLElement>('#video-result-count');
+      const videoEmpty = document.querySelector<HTMLElement>('#video-empty-state');
+      const videoReset = document.querySelector<HTMLButtonElement>('#reset-video-filters');
+      const videoActiveBadge = document.querySelector<HTMLButtonElement>('#video-active-filter-badge');
+      const videoActiveText = document.querySelector<HTMLElement>('#video-active-filter-text');
+      const videoTagButtons = document.querySelectorAll<HTMLButtonElement>('[data-video-tag-filter]');
+
+      let selectedVideoFilter = 'all';
+
+      function updateVideoResults(): void {
+        const query = normalize(videoSearch?.value ?? '');
+        let visible = 0;
+
+        videoCards.forEach((card) => {
+          let matchesFilter = false;
+          if (selectedVideoFilter === 'all') {
+            matchesFilter = true;
+          } else if (selectedVideoFilter === 'featured') {
+            matchesFilter = card.dataset.featured === 'true';
           } else {
-            search.blur();
+            matchesFilter = card.dataset.category === selectedVideoFilter;
+          }
+
+          const matchesSearch = !query || normalize(card.dataset.search ?? '').includes(query);
+          const shouldShow = matchesFilter && matchesSearch;
+
+          card.hidden = !shouldShow;
+          if (shouldShow) visible += 1;
+        });
+
+        videoFilters.forEach((filter) => {
+          const active = filter.dataset.videoFilter === selectedVideoFilter;
+          filter.classList.toggle('active', active);
+          filter.setAttribute('aria-pressed', String(active));
+        });
+
+        videoShortcuts.forEach((shortcut) => {
+          const active = shortcut.dataset.videoCategoryShortcut === selectedVideoFilter;
+          shortcut.classList.toggle('active', active);
+          shortcut.setAttribute('aria-pressed', String(active));
+        });
+
+        if (videoActiveBadge && videoActiveText) {
+          if (selectedVideoFilter !== 'all' || query) {
+            videoActiveBadge.hidden = false;
+            let label = selectedVideoFilter === 'featured' ? '⭐ Coups de cœur' : (selectedVideoFilter !== 'all' ? selectedVideoFilter : '');
+            if (query) {
+              label = label ? `${label} + "${videoSearch?.value}"` : `Recherche: "${videoSearch?.value}"`;
+            }
+            videoActiveText.textContent = label;
+          } else {
+            videoActiveBadge.hidden = true;
+          }
+        }
+
+        if (videoCount) {
+          videoCount.textContent = `${visible} vidéo${visible > 1 ? 's' : ''}`;
+        }
+        if (videoEmpty) videoEmpty.hidden = visible !== 0;
+      }
+
+      function setVideoFilter(filterVal: string): void {
+        selectedVideoFilter = filterVal;
+        updateVideoResults();
+      }
+
+      videoFilters.forEach((filter) => {
+        filter.addEventListener('click', () => setVideoFilter(filter.dataset.videoFilter ?? 'all'));
+      });
+
+      videoShortcuts.forEach((shortcut) => {
+        shortcut.addEventListener('click', () => {
+          const cat = shortcut.dataset.videoCategoryShortcut ?? 'all';
+          setVideoFilter(selectedVideoFilter === cat ? 'all' : cat);
+          document.querySelector('#videos-collection')?.scrollIntoView({ behavior: 'smooth' });
+        });
+      });
+
+      videoTagButtons.forEach((btn) => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const tag = btn.dataset.videoTagFilter;
+          if (tag && videoSearch) {
+            videoSearch.value = tag;
+            updateVideoResults();
+            document.querySelector('#videos-collection')?.scrollIntoView({ behavior: 'smooth' });
+          }
+        });
+      });
+
+      videoActiveBadge?.addEventListener('click', () => {
+        selectedVideoFilter = 'all';
+        if (videoSearch) videoSearch.value = '';
+        updateVideoResults();
+      });
+
+      videoSearch?.addEventListener('input', updateVideoResults);
+
+      videoReset?.addEventListener('click', () => {
+        selectedVideoFilter = 'all';
+        if (videoSearch) videoSearch.value = '';
+        updateVideoResults();
+        videoSearch?.focus();
+      });
+
+      // Gestion touche Échap et raccourci /
+      window.addEventListener('keydown', (e) => {
+        if (videoPlayer?.open) return;
+        if (e.key === 'Escape') {
+          const activeInput = document.activeElement;
+          if (activeInput === appSearch) {
+            if (appSearch.value) {
+              appSearch.value = '';
+              updateAppResults();
+            } else {
+              appSearch.blur();
+            }
+          } else if (activeInput === videoSearch) {
+            if (videoSearch.value) {
+              videoSearch.value = '';
+              updateVideoResults();
+            } else {
+              videoSearch.blur();
+            }
+          }
+        } else if (e.key === '/') {
+          const activeInput = document.activeElement;
+          if (activeInput !== appSearch && activeInput !== videoSearch) {
+            e.preventDefault();
+            if (currentView === 'videos') {
+              videoSearch?.focus();
+              videoSearch?.select();
+            } else {
+              appSearch?.focus();
+              appSearch?.select();
+            }
           }
         }
       });
