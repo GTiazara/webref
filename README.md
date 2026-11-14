@@ -35,6 +35,10 @@ Les catégories sont créées automatiquement à partir des fiches. `tags` sert 
 
 Pour un déploiement dans un sous-dossier, définissez `SITE_BASE` (par exemple `/webref/`) lors du build. `SITE_URL` peut contenir l'URL publique du site. Les icônes de sites sont chargées depuis le service de favicons de Google ; les initiales restent visibles sans connexion.
 
+## Affichage mobile
+
+Les styles ciblent d'abord les petits écrans : header compact, onglets Applications/Vidéos, filtres sur plusieurs lignes et cartes sur une colonne. Les contrôles tactiles disposent d'une hauteur minimale de 44 px. Les grilles s'enrichissent à partir de 640 px ; à partir de 860 px, la navigation principale remplace les onglets mobiles. Les catégories et les textes longs peuvent revenir à la ligne.
+
 ## Lecture des vidéos
 
 Les fiches de `src/content/videos/` acceptent les liens YouTube `youtu.be`, `watch?v=`, `embed/` et `shorts/`. Le bouton « Lire sur le site » ouvre un lecteur YouTube dans une fenêtre intégrée ; le lecteur est chargé au clic et arrêté à la fermeture. Le lien externe reste disponible séparément.

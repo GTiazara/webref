@@ -103,8 +103,8 @@ const getCategoryIcon = (category: string) => {
           </button>
         </nav>
 
-        <a class="header-link" href="#ressources" id="header-cta-link">
-          Explorer <ArrowRight size={16} />
+        <a class="header-link" href="#ressources" id="header-cta-link" aria-label="Explorer les applications">
+          <span class="header-link-text">Explorer</span> <ArrowRight size={16} />
         </a>
       </div>
     </header>
@@ -568,11 +568,17 @@ const getCategoryIcon = (category: string) => {
       const viewBtns = document.querySelectorAll<HTMLButtonElement>('[data-view-btn]');
       const viewApps = document.getElementById('view-apps');
       const viewVideos = document.getElementById('view-videos');
+      const headerCtaLink = document.querySelector<HTMLAnchorElement>('#header-cta-link');
 
       let currentView = 'apps';
 
       function setView(view: string, updateHash = true): void {
         currentView = view === 'videos' ? 'videos' : 'apps';
+
+        if (headerCtaLink) {
+          headerCtaLink.href = currentView === 'videos' ? '#videos-collection' : '#ressources';
+          headerCtaLink.setAttribute('aria-label', currentView === 'videos' ? 'Explorer les vidéos' : 'Explorer les applications');
+        }
 
         navTabs.forEach((tab) => {
           const isActive = tab.dataset.navView === currentView;
