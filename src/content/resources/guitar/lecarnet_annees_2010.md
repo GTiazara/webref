@@ -1,7 +1,7 @@
 ---
-title: lecarnet-annees-2010
-description: Chansons des années 2010 à jouer à la guitare avec accords et paroles
-url: https://lecarnetdenotes.com/collections/annees-2010
+title: lecarnet-annee
+description: Chansons à la guitare avec accords et paroles
+url: https://lecarnetdenotes.com
 category: Guitar
 tags: ["tab", "guitar", "chansons"]
 featured: false
